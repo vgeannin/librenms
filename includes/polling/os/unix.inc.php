@@ -22,6 +22,23 @@ if ($device['os'] == "linux" || $device['os'] == "endian") {
     } elseif (strstr($poll_device['sysDescr'], "armv")) {
         $hardware = "Generic ARM";
     }
+    # Mobile Iron Appliance Detection
+    $softwares = snmp_walk($device, 'hrSWInstalledName', '-Osqnv', 'HOST-RESOURCES-MIB');
+    if (str_contains($softwares, 'mobileiron')) {
+        $softwares = explode("\n", $softwares) ;
+        foreach ($softwares as $software) {
+            if (str_contains($software, 'mobileiron-core-base')) {
+                $version = str_replace('mobileiron-core-base', 'mobileiron-core', $software) ;
+                $hardware = "MobileIron Core";
+                break;
+            }
+            if (str_contains($software, 'mi-mics')) {
+                $version = str_replace('mi-mics', 'mobileiron-sentry', $software) ;
+                $hardware = "MobileIron Sentry";
+                break;
+            }
+        }
+    }
 
     # Distro "extend" support
 
