@@ -73,6 +73,9 @@ function nicecase($item)
         case 'nfs-v3-stats':
             return 'NFS v3 Stats';
 
+        case 'ntp':
+            return 'NTP';
+
         case 'ntp-client':
             return 'NTP Client';
 
@@ -96,6 +99,18 @@ function nicecase($item)
 
         case 'gpsd':
             return 'GPSD';
+
+        case 'exim-stats':
+            return 'EXIM Stats';
+
+        case 'fbsd-nfs-client':
+            return 'FreeBSD NFS Client';
+
+        case 'fbsd-nfs-server':
+            return 'FreeBSD NFS Server';
+        
+        case 'php-fpm':
+            return 'PHP-FPM';
 
         default:
             return ucfirst($item);
@@ -181,10 +196,16 @@ function generate_overlib_content($graph_array, $text)
 }//end generate_overlib_content()
 
 
-function get_percentage_colours($percentage)
+function get_percentage_colours($percentage, $component_perc_warn = null)
 {
+    $perc_warn = '75';
+
+    if (isset($component_perc_warn)) {
+        $perc_warn = round($component_perc_warn, 0);
+    }
+
     $background = array();
-    if ($percentage > '90') {
+    if ($percentage > $perc_warn) {
         $background['left']  = 'c4323f';
         $background['right'] = 'C96A73';
     } elseif ($percentage > '75') {
@@ -298,13 +319,18 @@ function generate_device_link($device, $text = null, $vars = array(), $start = 0
 }//end generate_device_link()
 
 
-function overlib_link($url, $text, $contents, $class)
+function overlib_link($url, $text, $contents, $class = null)
 {
     global $config;
 
     $contents = "<div style=\'background-color: #FFFFFF;\'>".$contents.'</div>';
     $contents = str_replace('"', "\'", $contents);
-    $output   = '<a class="'.$class.'" href="'.$url.'"';
+    if ($class === null) {
+        $output   = '<a href="'.$url.'"';
+    } else {
+        $output   = '<a class="'.$class.'" href="'.$url.'"';
+    }
+
     if ($config['web_mouseover'] === false) {
         $output .= '>';
     } else {
@@ -661,7 +687,7 @@ function generate_bill_url($bill, $vars = array())
 function generate_port_image($args)
 {
     if (!$args['bg']) {
-        $args['bg'] = 'FFFFFF';
+        $args['bg'] = 'FFFFFF00';
     }
 
     return "<img src='graph.php?type=".$args['graph_type'].'&amp;id='.$args['port_id'].'&amp;from='.$args['from'].'&amp;to='.$args['to'].'&amp;width='.$args['width'].'&amp;height='.$args['height'].'&amp;bg='.$args['bg']."'>";
@@ -698,40 +724,6 @@ function print_optionbar_end()
 {
     echo '  </div>';
 }//end print_optionbar_end()
-
-
-function geteventicon($message)
-{
-    if ($message == 'Device status changed to Down') {
-        $icon = 'server_connect.png';
-    }
-
-    if ($message == 'Device status changed to Up') {
-        $icon = 'server_go.png';
-    }
-
-    if ($message == 'Interface went down' || $message == 'Interface changed state to Down') {
-        $icon = 'if-disconnect.png';
-    }
-
-    if ($message == 'Interface went up' || $message == 'Interface changed state to Up') {
-        $icon = 'if-connect.png';
-    }
-
-    if ($message == 'Interface disabled') {
-        $icon = 'if-disable.png';
-    }
-
-    if ($message == 'Interface enabled') {
-        $icon = 'if-enable.png';
-    }
-
-    if (isset($icon)) {
-        return $icon;
-    } else {
-        return false;
-    }
-}//end geteventicon()
 
 
 function overlibprint($text)
@@ -788,9 +780,9 @@ function getlocations()
 
     // Fetch regular locations
     if ($_SESSION['userlevel'] >= '5') {
-        $rows = dbFetchRows('SELECT D.device_id,location FROM devices AS D GROUP BY location ORDER BY location');
+        $rows = dbFetchRows('SELECT location FROM devices AS D GROUP BY location ORDER BY location');
     } else {
-        $rows = dbFetchRows('SELECT D.device_id,location FROM devices AS D, devices_perms AS P WHERE D.device_id = P.device_id AND P.user_id = ? GROUP BY location ORDER BY location', array($_SESSION['user_id']));
+        $rows = dbFetchRows('SELECT location FROM devices AS D, devices_perms AS P WHERE D.device_id = P.device_id AND P.user_id = ? GROUP BY location ORDER BY location', array($_SESSION['user_id']));
     }
 
     foreach ($rows as $row) {
@@ -1024,6 +1016,19 @@ function get_client_ip()
     return $client_ip;
 }//end get_client_ip()
 
+/**
+ * @param $string
+ * @param int $max
+ * @return string
+ */
+function shorten_text($string, $max = 30)
+{
+    if (strlen($string) > 50) {
+        return substr($string, 0, $max) . "...";
+    } else {
+        return $string;
+    }
+}
 
 function shorten_interface_type($string)
 {
@@ -1135,6 +1140,11 @@ function alert_details($details)
 
         if ($tmp_alerts['port_id']) {
             $fault_detail .= generate_port_link($tmp_alerts).';&nbsp;';
+            $fallback      = false;
+        }
+
+        if ($tmp_alerts['accesspoint_id']) {
+            $fault_detail .= generate_ap_link($tmp_alerts, $tmp_alerts['name']) . ';&nbsp;';
             $fallback      = false;
         }
 
@@ -1361,4 +1371,138 @@ function get_rules_from_json()
 {
     global $config;
     return json_decode(file_get_contents($config['install_dir'] . '/misc/alert_rules.json'), true);
+}
+
+function search_oxidized_config($search_in_conf_textbox)
+{
+    global $config;
+    $oxidized_search_url = $config['oxidized']['url'] . '/nodes/conf_search?format=json';
+    $postdata = http_build_query(
+        array(
+            'search_in_conf_textbox' => $search_in_conf_textbox,
+        )
+    );
+    $opts = array('http' =>
+        array(
+            'method'  => 'POST',
+            'header'  => 'Content-type: application/x-www-form-urlencoded',
+            'content' => $postdata
+        )
+    );
+    $context  = stream_context_create($opts);
+    return json_decode(file_get_contents($oxidized_search_url, false, $context), true);
+}
+
+/**
+ * @param $data
+ * @return bool|mixed
+ */
+function array_to_htmljson($data)
+{
+    if (is_array($data)) {
+        $data = htmlentities(json_encode($data));
+        return str_replace(',', ',<br />', $data);
+    } else {
+        return false;
+    }
+}
+
+/**
+ * @param int $eventlog_severity
+ * @return string $eventlog_severity_icon
+ */
+function eventlog_severity($eventlog_severity)
+{
+    switch ($eventlog_severity) {
+        case 1:
+            return "severity-ok"; //OK
+        case 2:
+            return "severity-info"; //Informational
+        case 3:
+            return "severity-notice"; //Notice
+        case 4:
+            return "severity-warning"; //Warning
+        case 5:
+            return "severity-critical"; //Critical
+        default:
+            return "severity-unknown"; //Unknown
+    }
+} // end eventlog_severity
+
+/**
+ *
+ */
+function set_image_type()
+{
+    return header('Content-type: ' . get_image_type());
+}
+
+function get_image_type()
+{
+    global $config;
+
+    if ($config['webui']['graph_type'] === 'svg') {
+        return 'image/svg+xml';
+    } else {
+        return 'image/png';
+    }
+}
+
+function get_oxidized_nodes_list()
+{
+    global $config;
+
+    $context = stream_context_create(array(
+        'http' => array(
+            'header' => "Accept: application/json",
+        )
+    ));
+
+    $data = json_decode(file_get_contents($config['oxidized']['url'] . '/nodes?format=json', false, $context), true);
+
+    foreach ($data as $object) {
+        $device = device_by_name($object['name']);
+        $fa_color = $object['status'] == 'success' ? 'success' : 'danger';
+        echo "
+        <tr>
+        <td>
+        " . generate_device_link($device) . "
+        </td>
+        <td>
+        <i class='fa fa-square text-" . $fa_color . "'></i>
+        </td>
+        <td>
+        " . $object['time'] . "
+        </td>
+        <td>
+        " . $object['model'] . "
+        </td>
+        <td>
+        " . $object['group'] . "
+        </td>
+        </tr>";
+    }
+}
+
+// fetches disks for a system
+function get_disks($device)
+{
+    return dbFetchRows('SELECT * FROM `ucd_diskio` WHERE device_id = ? ORDER BY diskio_descr', array($device));
+}
+
+// takes the device array and app_id
+function get_disks_with_smart($device, $app_id)
+{
+    $all_disks=get_disks($device['device_id']);
+    $disks=array();
+    $all_disks_int=0;
+    while (isset($all_disks[$all_disks_int])) {
+        $disk=$all_disks[$all_disks_int]['diskio_descr'];
+        $rrd_filename = rrd_name($device['hostname'], array('app', 'smart', $app_id, $disk));
+        if (rrdtool_check_rrd_exists($rrd_filename)) {
+            $disks[]=$disk;
+        }
+        $all_disks_int++;
+    }
+    return $disks;
 }

@@ -23,21 +23,18 @@
  * @author     Tony Murray <murraytony@gmail.com>
  */
 
-
 /**
- * @param array $modules
+ * @param array $modules Which modules to initialize
  */
-//function librenms_init($init_modules = array())
-//{
-//global $console_color, $config;
 
 $install_dir = realpath(__DIR__ . '/..');
 $config['install_dir'] = $install_dir;
 chdir($install_dir);
 
-// Libraries
-require('Net/IPv4.php');
-require('Net/IPv6.php');
+if (!getenv('TRAVIS')) {
+    require('Net/IPv4.php');
+    require('Net/IPv6.php');
+}
 
 # composer autoload
 require $install_dir . '/vendor/autoload.php';
@@ -50,10 +47,15 @@ require_once $install_dir . '/includes/common.php';
 require $install_dir . '/includes/dbFacile.php';
 require $install_dir . '/includes/rrdtool.inc.php';
 require $install_dir . '/includes/influxdb.inc.php';
+require $install_dir . '/includes/graphite.inc.php';
 require $install_dir . '/includes/datastore.inc.php';
 require $install_dir . '/includes/billing.php';
 require $install_dir . '/includes/syslog.php';
-require $install_dir . '/includes/snmp.inc.php';
+if (module_selected('mocksnmp', $init_modules)) {
+    require $install_dir . '/tests/mocks/mock.snmp.inc.php';
+} else {
+    require $install_dir . '/includes/snmp.inc.php';
+}
 require $install_dir . '/includes/services.inc.php';
 require $install_dir . '/includes/mergecnf.inc.php';
 require $install_dir . '/includes/functions.php';
@@ -101,19 +103,25 @@ if ($config['memcached']['enable'] === true) {
 
 if (!module_selected('nodb', $init_modules)) {
     // Connect to database
-    $database_link = mysqli_connect('p:' . $config['db_host'], $config['db_user'], $config['db_pass']);
+    $database_link = mysqli_connect('p:' . $config['db_host'], $config['db_user'], $config['db_pass'], null, $config['db_port']);
     if (!$database_link) {
         echo '<h2>MySQL Error</h2>';
         echo mysqli_connect_error();
         die;
     }
     $database_db = mysqli_select_db($database_link, $config['db_name']);
+    dbQuery("SET NAMES 'utf8'");
+    dbQuery("SET CHARACTER SET 'utf8'");
+    dbQuery("SET COLLATION_CONNECTION = 'utf8_unicode_ci'");
 
     // pull in the database config settings
     mergedb();
 
     // load graph types from the database
     require $install_dir . '/includes/load_db_graph_types.inc.php';
+
+    // Process $config to tidy up
+    require $install_dir . '/includes/process_config.inc.php';
 }
 
 if (file_exists($config['install_dir'] . '/html/includes/authentication/'.$config['auth_mechanism'].'.inc.php')) {
@@ -125,6 +133,9 @@ if (file_exists($config['install_dir'] . '/html/includes/authentication/'.$confi
 
 if (module_selected('web', $init_modules)) {
     umask(0002);
+    if (!isset($config['title_image'])) {
+        $config['title_image'] = 'images/librenms_logo_'.$config['site_style'].'.svg';
+    }
     require $install_dir . '/html/includes/vars.inc.php';
     $tmp_list = dbFetchRows('SELECT DISTINCT(`os`) FROM `devices`');
     $os_list = array();

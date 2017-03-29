@@ -64,7 +64,7 @@ foreach (get_graph_subtypes($type) as $avail_type) {
     } else {
         $is_selected = '';
     }
-    $graphs_types .= '<option value="' . generate_url($vars, array('format' => 'graph_' . $avail_type)) . '" ' . $is_selected . '>' . $display_type . '</option>';
+    $graphs_types .= '<option value="' . generate_url($vars, array('format' => 'graph_' . $avail_type, 'from' => $vars['from'] ?: $config['time']['day'], 'to' => $vars['to'] ?: $config['time']['now'])) . '" ' . $is_selected . '>' . $display_type . '</option>';
 }
 $graphs_types .= '</select>';
 
@@ -403,7 +403,7 @@ if ($format == "graph") {
     }
 
     echo '
-                    <th data-column-id="actions" data-sortable="false" data-searchable="false">Actions</th>
+                    <th data-column-id="actions" data-sortable="false" data-searchable="false" data-header-css-class="device-table-header-actions">Actions</th>
                 </tr>
             </thead>
         </table>

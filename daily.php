@@ -42,7 +42,7 @@ if ($options['f'] === 'rrd_purge') {
 
 if ($options['f'] === 'syslog') {
     if (is_numeric($config['syslog_purge'])) {
-        $rows = dbFetchRow('SELECT MIN(seq) FROM syslog');
+        $rows = (int)dbFetchCell('SELECT MIN(seq) FROM syslog');
         while (true) {
             $limit = dbFetchRow('SELECT seq FROM syslog WHERE seq >= ? ORDER BY seq LIMIT 1000,1', array($rows));
             if (empty($limit)) {
@@ -169,4 +169,8 @@ if ($options['f'] === 'notify') {
             "We just attempted to update your install but failed. The information below should help you fix this.\r\n\r\n" . $options['o']
         );
     }
+}
+
+if ($options['f'] === 'peeringdb') {
+    cache_peeringdb();
 }

@@ -1,6 +1,7 @@
 site_name: LibreNMS Docs
 docs_dir: doc
 theme_dir: 'librenms_theme'
+theme: null
 site_dir: out
 site_url: http://docs.librenms.org
 markdown_extensions:
@@ -49,6 +50,7 @@ pages:
     - Extensions/Email-Alerting.md
     - Extensions/Globe-Frontpage.md
     - Extensions/Graylog.md
+    - Extensions/Graphite.md
     - Extensions/IRC-Bot.md
     - Extensions/IRC-Bot-Extensions.md
     - Extensions/InfluxDB.md
@@ -58,6 +60,7 @@ pages:
     - Extensions/Network-Map.md
     - Extensions/NFSen.md
     - Extensions/Oxidized.md
+    - Extensions/PeeringDB.md
     - Extensions/Plugin-System.md
     - Extensions/Poller-Service.md
     - Extensions/Port-Description-Parser.md
@@ -88,8 +91,10 @@ pages:
     - Developing/Creating-Release.md
 - API: API/API-Docs.md
 - Support:
+    - Support/1-Minute-Polling.md
     - Support/Configuration.md
     - Support/Discovery Support.md
+    - Support/Example-Hardware-Setup.md
     - Support/FAQ.md
     - Support/Features.md
     - Support/Install Validation.md
@@ -105,4 +110,5 @@ pages:
     - Installation/Installation-(Debian-Ubuntu).md
     - Installation/Installation-(RHEL-CentOS).md
     - Support/Support-New-OS.md
+    - Extensions/Agent-Setup.md
     - Extensions/RRDCached-Security.md

@@ -24,6 +24,7 @@ source: Support/FAQ.md
  - [How do I move my LibreNMS install to another server?](#faq24)
  - [Why is my EdgeRouter device not detected?](#faq25)
  - [Why are some of my disks not showing?](#faq26)
+ - [Why are my disks reporting an incorrect size?](#faq27)
 
 ### Developing
  - [How do I add support for a new OS?](#faq8)
@@ -112,9 +113,12 @@ shouldn't be seeing this. If you are, please report this in [issue 443](https://
 #### <a name="faq15"> Why do I see traffic spikes in my graphs?</a>
 
 This occurs either when a counter resets or the device sends back bogus data making it look like a counter reset. We have enabled support for setting a maximum value for rrd files for ports.
+
+
 Before this all rrd files were set to 100G max values, now you can enable support to limit this to the actual port speed.
 
-rrdtool tune will change the max value when the interface speed is detected as being changed (min value will be set for anything 10M or over) or when you run the included script (scripts/tune_port.php).
+
+rrdtool tune will change the max value when the interface speed is detected as being changed (min value will be set for anything 10M or over) or when you run the included script (./scripts/tune_port.php) - see [RRDTune doc](../Extensions/RRDTune.md)
 
 #### <a name="faq17"> Why do I see gaps in my graphs?</a>
 
@@ -241,37 +245,32 @@ Or
 
 Restart snmpd and LibreNMS should populate the additional disk after a fresh discovery.
 
+#### <a name="faq27"> Why are my disks reporting an incorrect size?</a>
+There is a known issue for net-snmp, which causes it to report incorrect disk size and disk usage when the size of the disk (or raid) are larger then 16TB, a workaround has been implemented but is not active on Centos 6.8 by default due to the fact that this workaround breaks official SNMP specs, and as such could cause unexpected behaviour in other SNMP tools. You can activate the workaround by adding to /etc/snmp/snmpd.conf :
+
+`realStorageUnits 0`
+
 #### <a name="faq8"> How do I add support for a new OS?</a>
 
-The easiest way to show you how to do that is to link to an existing pull request that has been merged in on [GitHub](https://github.com/librenms/librenms/pull/352/files)
-
-To go into a bit more detail, the following are usually needed:
-
-**includes/definitions/$os.yaml**
-Create this file to include the required definitions for the new OS.
-**includes/discovery/os/ciscowlc.inc.php**
-This file just sets the $os variable, done by checking the SNMP tree for a particular value that matches the OS you are adding.  Typically, this will come from the presence of specific values in
-sysObjectID or sysDescr, or the existence of a particular enterprise tree.
-**includes/polling/os/ciscowlc.inc.php**
-This file will usually set the variables for $version and $hardware gained from an snmp lookup.
-**html/images/os/$os.png**
-This is a 32x32 png format image of the OS you are adding support for.
-
-You will also need to supply a test unit within `tests/OSDiscoveryTest.php`. Please see [Support-New-OS](Support-New-OS.md) for further information.
+Please see [Supporting a new OS](../Developing/Support-New-OS.md)
 
 #### <a name="faq20"> What information do you need to add a new OS?</a>
 
 Under the device, click the gear and select Capture. 
-Please provide the output of Discovery, Poller, and Snmpwalk as separate non-expiring pastebin.com links.
+Please provide the output of Discovery, Poller, and Snmpwalk as separate non-expiring https://p.libren.ms/ links.
 
 You can also use the command line to obtain the information.  Especially, if snmpwalk results in a large amount of data.
 Replace the relevant information in these commands such as HOSTNAME and COMMUNITY. Use `snmpwalk` instead of `snmpbulkwalk` for v1 devices.
 
+> These commands will automatically upload the data to LibreNMS servers.
+
 ```bash
-./discovery.php -h HOSTNAME -d -m os
-./poller.php -h HOSTNAME -r -f -d -m os
-snmpbulkwalk -OUneb -v2c -c COMMUNITY HOSTNAME .
+./discovery.php -h HOSTNAME -d | ./pbin.sh
+./poller.php -h HOSTNAME -r -f -d | ./pbin.sh
+snmpbulkwalk -OUneb -v2c -c COMMUNITY HOSTNAME .  | ./pbin.sh
 ```
+
+You can use the links provided by these commands within the issue.
 
 If possible please also provide what the OS name should be if it doesn't exist already.
 

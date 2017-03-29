@@ -31,8 +31,7 @@ if ($enabled == 1) {
         'bills'           => 'SELECT COUNT(`bill_type`) AS `total`,`bill_type` FROM `bills` GROUP BY `bill_type`',
         'cef'             => 'SELECT COUNT(`device_id`) AS `total` FROM `cef_switching`',
         'cisco_asa'       => 'SELECT COUNT(`oid`) AS `total`,`oid` FROM `ciscoASA` WHERE `disabled` = 0 GROUP BY `oid`',
-        'mempool'         => 'SELECT COUNT(`cmpName`) AS `total`,`cmpName` FROM `cmpMemPool` GROUP BY `cmpName`',
-        'current'         => 'SELECT COUNT(`current_type`) AS `total`,`current_type` FROM `current` GROUP BY `current_type`',
+        'mempool'         => 'SELECT COUNT(`mempool_descr`) AS `total`,`mempool_descr` FROM `mempools` GROUP BY `mempool_descr`',
         'dbschema'        => 'SELECT COUNT(`version`) AS `total`, `version` FROM `dbSchema`',
         'snmp_version'    => 'SELECT COUNT(`snmpver`) AS `total`,`snmpver` FROM `devices` GROUP BY `snmpver`',
         'os'              => 'SELECT COUNT(`os`) AS `total`,`os` FROM `devices` GROUP BY `os`',
@@ -74,9 +73,38 @@ if ($enabled == 1) {
     $response['rrdtool_version'][] = array('total' => 1, 'version' => $version['rrdtool_ver']);
     $response['netsnmp_version'][] = array('total' => 1, 'version' => $version['netsnmp_ver']);
 
+    // collect sysDescr and sysObjectID for submission
+    $device_info = dbFetchRows('SELECT COUNT(*) AS `count`,`os`, `sysDescr`, `sysObjectID` FROM `devices`
+        WHERE `sysDescr` IS NOT NULL AND `sysObjectID` IS NOT NULL GROUP BY `os`, `sysDescr`, `sysObjectID`');
+
+    // sanitize sysDescr
+    $device_info = array_map(function ($entry) {
+        // remove hostnames from linux and macosx
+        $entry['sysDescr'] = preg_replace_callback('/^(Linux |Darwin |FreeBSD )[A-Za-z0-9._\-]+ ([0-9.]{3,9})/', function ($matches) {
+            return $matches[1] . 'hostname ' .$matches[2];
+        }, $entry['sysDescr']);
+
+        // wipe serial numbers, preserve the format
+        $entry['sysDescr'] = preg_replace_callback('/(SN[:=]? ?)([A-Za-z0-9.\-]{4,16})/', function ($matches) {
+            $patterns = array(
+                '/[A-Z]/',
+                '/[a-z]/',
+                '/[0-9]/'
+            );
+            $replacements = array(
+                'A',
+                'a',
+                '0'
+            );
+            return $matches[1] . preg_replace($patterns, $replacements, $matches[2]);
+        }, $entry['sysDescr']);
+        return $entry;
+    }, $device_info);
+
     $output = array(
         'uuid' => $uuid,
         'data' => $response,
+        'info' => $device_info,
     );
     $data   = json_encode($output);
     $submit = array('data' => $data);

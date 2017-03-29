@@ -1,9 +1,11 @@
 <?php
-//
-// NO CHANGES TO THIS FILE, IT IS NOT USER-EDITABLE   #
-//
-// YES, THAT MEANS YOU                   #
-//
+/*
+ NO CHANGES TO THIS FILE, IT IS NOT USER-EDITABLE
+
+ YES, THAT MEANS YOU
+
+ Any changes you want to make here, make in config.php instead.
+*/
 
 $config['os']['default']['over'][0]['graph'] = 'device_processor';
 $config['os']['default']['over'][0]['text']  = 'Processor Usage';
@@ -111,6 +113,10 @@ $config['graph_types']['device']['ubnt_airfiber_RFTotOctetsRx']['descr'] = 'RF T
 $config['graph_types']['device']['ubnt_airfiber_RFTotPktsRx']['section'] = 'wireless';
 $config['graph_types']['device']['ubnt_airfiber_RFTotPktsRx']['order'] = '7';
 $config['graph_types']['device']['ubnt_airfiber_RFTotPktsRx']['descr'] = 'RF Total Packets Rx';
+
+$config['graph_types']['device']['ubnt_airfiber_RxPower']['section'] = 'wireless';
+$config['graph_types']['device']['ubnt_airfiber_RxPower']['order'] = '8';
+$config['graph_types']['device']['ubnt_airfiber_RxPower']['descr'] = 'Radio Rx Power';
 
 // Unifi Support
 $config['graph_types']['device']['ubnt_unifi_RadioCu_0']['section'] = 'wireless';
@@ -308,6 +314,9 @@ $config['graph_types']['device']['canopy_generic_errorCount']['descr']   = 'Erro
 $config['graph_types']['device']['canopy_generic_crcErrors']['section'] = 'wireless';
 $config['graph_types']['device']['canopy_generic_crcErrors']['order']   = '15';
 $config['graph_types']['device']['canopy_generic_crcErrors']['descr']   = 'CRC Errors';
+$config['graph_types']['device']['canopy-generic-frameUtilization']['section'] = 'wireless';
+$config['graph_types']['device']['canopy-generic-frameUtilization']['order']   = '16';
+$config['graph_types']['device']['canopy-generic-frameUtilization']['descr']   = 'Frame Utilization';
 
 $config['graph_types']['device']['cambium_epmp_RFStatus']['section'] = 'wireless';
 $config['graph_types']['device']['cambium_epmp_RFStatus']['order']   = '0';
@@ -330,6 +339,9 @@ $config['graph_types']['device']['cambium_epmp_gpsSync']['descr']   = 'GPS Sync 
 $config['graph_types']['device']['cambium_epmp_freq']['section'] = 'wireless';
 $config['graph_types']['device']['cambium_epmp_freq']['order']   = '6';
 $config['graph_types']['device']['cambium_epmp_freq']['descr']   = 'Frequency';
+$config['graph_types']['device']['cambium-epmp-frameUtilization']['section'] = 'wireless';
+$config['graph_types']['device']['ccambium-epmp-frameUtilization']['order']   = '7';
+$config['graph_types']['device']['cambium-epmp-frameUtilization']['descr']   = 'Frame Utilization';
 
 $config['graph_types']['device']['wifi_clients']['section'] = 'wireless';
 $config['graph_types']['device']['wifi_clients']['order']   = '0';
@@ -574,6 +586,19 @@ $config['graph_types']['device']['sgos_average_requests']['section']  = 'network
 $config['graph_types']['device']['sgos_average_requests']['order']    = '0';
 $config['graph_types']['device']['sgos_average_requests']['descr']    = 'Average HTTP Requests';
 
+//riverbed specific graphs
+$config['graph_types']['device']['riverbed_connections']['section'] = 'network';
+$config['graph_types']['device']['riverbed_connections']['order'] = 0;
+$config['graph_types']['device']['riverbed_connections']['descr'] = 'Connections';
+$config['graph_types']['device']['riverbed_optimization']['section'] = 'network';
+$config['graph_types']['device']['riverbed_optimization']['order'] = 1;
+$config['graph_types']['device']['riverbed_optimization']['descr'] = 'Optimization';
+$config['graph_types']['device']['riverbed_datastore']['section'] = 'network';
+$config['graph_types']['device']['riverbed_datastore']['order'] = 2;
+$config['graph_types']['device']['riverbed_datastore']['descr'] = 'Data store productivity';
+$config['graph_types']['device']['riverbed_passthrough']['section'] = 'network';
+$config['graph_types']['device']['riverbed_passthrough']['order'] = 3;
+$config['graph_types']['device']['riverbed_passthrough']['descr'] = 'Bandwidth Passthrough';
 
 // Device Types
 $i = 0;
@@ -706,8 +731,4 @@ if (!isset($config['log_file'])) {
 
 if (!isset($config['plugin_dir'])) {
     $config['plugin_dir'] = $config['html_dir'].'/plugins';
-}
-
-if (!isset($config['title_image'])) {
-    $config['title_image'] = 'images/librenms_logo_'.$config['site_style'].'.png';
 }

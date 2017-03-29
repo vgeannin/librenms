@@ -25,7 +25,7 @@ if ($_SESSION['userlevel'] >= '5') {
 }
 
 if (isset($searchPhrase) && !empty($searchPhrase)) {
-    $sql .= " AND (`D`.`hostname` LIKE '%$searchPhrase%' OR `E`.`datetime` LIKE '%$searchPhrase%' OR `E`.`message` LIKE '%$searchPhrase%' OR `E`.`type` LIKE '%$searchPhrase%')";
+    $sql .= " AND (`D`.`hostname` LIKE '%$searchPhrase%' OR `E`.`datetime` LIKE '%$searchPhrase%' OR `E`.`message` LIKE '%$searchPhrase%' OR `E`.`type` LIKE '%$searchPhrase%' OR `E`.`username` LIKE '%$searchPhrase%')";
 }
 
 $count_sql = "SELECT COUNT(event_id) $sql";
@@ -49,7 +49,7 @@ if ($rowCount != -1) {
     $sql .= " LIMIT $limit_low,$limit_high";
 }
 
-$sql = "SELECT `E`.*,DATE_FORMAT(datetime, '".$config['dateformat']['mysql']['compact']."') as humandate $sql";
+$sql = "SELECT `E`.*,DATE_FORMAT(datetime, '".$config['dateformat']['mysql']['compact']."') as humandate,severity $sql";
 
 foreach (dbFetchRows($sql, $param) as $eventlog) {
     $dev = device_by_id_cache($eventlog['host']);
@@ -59,12 +59,15 @@ foreach (dbFetchRows($sql, $param) as $eventlog) {
     } else {
         $type = $eventlog['type'];
     }
+    $severity_colour = $eventlog['severity'];
 
     $response[] = array(
-        'datetime' => $eventlog['humandate'],
-        'hostname' => generate_device_link($dev, shorthost($dev['hostname'])),
-        'type'     => $type,
-        'message'  => htmlspecialchars($eventlog['message']),
+        'eventicon' => "<i class='fa fa-bookmark fa-lg ".eventlog_severity($severity_colour)."' aria-hidden='true'></i>",
+        'datetime'  => $eventlog['humandate'],
+        'hostname'  => generate_device_link($dev, shorthost($dev['hostname'])),
+        'type'      => $type,
+        'message'   => htmlspecialchars($eventlog['message']),
+        'username'   => $eventlog['username'],
     );
 }
 

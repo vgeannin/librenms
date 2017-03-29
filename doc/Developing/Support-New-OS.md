@@ -30,25 +30,93 @@ over:
     - { graph: device_bits, text: 'Device Traffic' }
     - { graph: device_processor, text: 'CPU Usage' }
     - { graph: device_mempool, text: 'Memory Usage' }
+discovery:
+    - sysDescr:
+        - Pulse Connect Secure
+        - Pulse Secure
+        - Juniper Networks,Inc,VA-DTE
+        - VA-SPE
 ```
 
-#### Discovery OS
+#### Icon and Logo
 
-We create a new file named as our OS definition and in this directory:
+Create an SVG image of the icon and logo.  Legacy PNG bitmaps are also supported but look bad on HiDPI.
+- A vector image should not contain padding.  
+- The file should not be larger than 20 Kb. Simplify paths to reduce large files.
+- Use plain SVG without gzip compression.
 
-```bash
-includes/discovery/os/pulse.inc.php
+##### Icon
+- Save the icon SVG to **html/images/os/$os.svg**.
+- Icons should look good when viewed at 32x32 px.
+- Square icons are preferred to full logos with text.
+- Remove small ornaments that are almost not visible when displayed with 32px width (e.g. ® or ™).
+
+##### Logo
+- Save the logo SVG to **html/images/logos/$os.svg**.
+- Logos can be any dimension, but often are wide and contain the company name.
+- If a logo is not present, the icon will be used.
+
+##### Hints
+
+Hints for [Inkscape](https://inkscape.org/):
+
+- You can open a PDF to extract the logo.
+- Ungroup elements to isolate the logo.
+- Use `Path -> Simplify` to simplify paths of large files.
+- Use `File -> Document Properties… -> Resize page to content…` to remove padding.
+- Use `File -> Clean up document` to remove unused gradients, patterns, or markers.
+- Use `File -> Save As -> Plain SVG` to save the final image.
+
+By optimizing the SVG you can shrink the file size in some cases to less than 20 %.
+[SVG Optimizer](https://github.com/svg/svgo) does a great job. There is also an [online version](https://jakearchibald.github.io/svgomg/).
+
+#### OS Discovery
+The discovery section of the OS yaml file contains information needed to detect this OS.
+
+##### Discovery Operators
+ - `sysObjectId` The preferred operator. Checks if the sysObjectID starts with one of the strings under this item
+ - `sysDescr` Use this in addition to sysObjectId if required. Check that the sysDescr contains one of the strings under this item
+ - `sysDescr_regex` Please avoid use of this. Checks if the sysDescr matches one of the regex statements under this item
+
+##### Discoery Logic
+YAML is converted to an array in PHP.  Consider the following YAML:
+```yaml
+discovery: 
+  - sysObjectId: foo
+  - 
+    sysDescr: [ snafu, exodar ]
+    sysObjectId: bar
+
 ```
-This file just sets the $os variable, done by checking the SNMP tree for a particular value that matches the OS you are adding. Typically, this will come from the presence of specific values in sysObjectID or sysDescr, or the existence of a particular enterprise tree.
-Look at other files to get help in the code structure.
-
+This is how the discovery array would look in PHP:
 ```php
-<?php
-
-if (str_contains($sysDescr, array('Pulse Connect Secure', 'Pulse Secure', 'Juniper Networks,Inc,VA-DTE', 'VA-SPE'))) {
-    $os = 'pulse';
-}
+[
+     [
+       "sysObjectId" => "foo",
+     ],
+     [
+       "sysDescr" => [
+         "snafu",
+         "exodar",
+       ],
+       "sysObjectId" => "bar",
+     ]
+]
 ```
+
+
+The logic for the discovery is as follows:
+1. One of the first level items must match
+2. ALL of the second level items must match (sysObjectId, sysDescr)
+3. One of the third level items (foo, [snafu,exodar], bar) must match
+
+So, considering the example:
+ - `sysObjectId: foo, sysDescr: ANYTHING` matches
+ - `sysObjectId: bar, sysDescr: ANYTHING` does not match
+ - `sysObjectId: bar, sysDescr: exodar` matches 
+ - `sysObjectId: bar, sysDescr: snafu` matches 
+
+#### Basic OS information polling
 
 Here is the file location for polling the new OS within a vendor MIB or a standard one:
 
@@ -144,7 +212,7 @@ over:
 ```
 
 If you are adding custom graphs, please add the following to `includes/definitions.inc.php`:
-
+```php
 //Don't forget to declare the specific graphs if needed. It will be located near the end of the file.
 
 //Pulse Secure Graphs
@@ -287,31 +355,33 @@ We declare two specific graphs for users and sessions numbers. Theses two graphs
 ```php
 <?php
 
-$version = trim(snmp_get($device, "productVersion.0", "-OQv", "PULSESECURE-PSG-MIB"),'"');
-$hardware = "Juniper " . trim(snmp_get($device, "productName.0", "-OQv", "PULSESECURE-PSG-MIB"),'"');
-$hostname = trim(snmp_get($device, "sysName.0", "-OQv", "SNMPv2-MIB"),'"');
+$version = preg_replace('/[\r\n\"]+/', ' ', snmp_get($device, "productVersion.0", "-OQv", "PULSESECURE-PSG-MIB"));
+$hardware = "Juniper " . preg_replace('/[\r\n\"]+/', ' ', snmp_get($device, "productName.0", "-OQv", "PULSESECURE-PSG-MIB"));
+$hostname = trim($poll_device['sysName'], '"');
 
-$users = snmp_get($device, 'PULSESECURE-PSG-MIB::iveConcurrentUsers.0', '-OQv');
+$users = snmp_get($device, 'iveConcurrentUsers.0', '-OQv', 'PULSESECURE-PSG-MIB');
 
 if (is_numeric($users)) {
     $rrd_def = 'DS:users:GAUGE:600:0:U';
+
     $fields = array(
-        'users' => $users
-    )
+        'users' => $users,
+    );
+
     $tags = compact('rrd_def');
     data_update($device, 'pulse_users', $tags, $fields);
     $graphs['pulse_users'] = true;
 }
 
-$sessions = snmp_get($device, 'PULSESECURE-PSG-MIB::iveConcurrentUsers.0', '-OQv');
+$sessions = snmp_get($device, 'iveConcurrentUsers.0', '-OQv', 'PULSESECURE-PSG-MIB');
 
 if (is_numeric($sessions)) {
-    $rrd_def = array(
-        'DS:sessions:GAUGE:600:0:U',
-    }
+    $rrd_def = 'DS:sessions:GAUGE:600:0:U';
+
     $fields = array(
-        'sessions' => $sessions
+        'sessions' => $sessions,
     );
+
     $tags = compact('rrd_def');
     data_update($device, 'pulse_sessions', $tags, $fields);
     $graphs['pulse_sessions'] = true;
@@ -430,7 +500,7 @@ to supply an snmprec file. This is pretty simple and using nios as the example a
 1.3.6.1.2.1.1.2.0|6|1.3.6.1.4.1.7779.1.1402
 ```
 
-During testing LibreNMS will use any info in the snmprec file for snmp calls.  This one provides 
+During testing LibreNMS will use any info in the snmprec file for snmp calls.  This one provides
 sysDescr (`.1.3.6.1.2.1.1.1.0`, 4 = Octet String) and sysObjectID (`.1.3.6.1.2.1.1.2.0`, 6 = Object Identifier),
  which is the minimum that should be provided for new snmprec files.
 
